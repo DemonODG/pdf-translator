@@ -1,0 +1,6 @@
+MARKER_STRIP_LINE_BREAKS="0" marker_single /mnt/project/raw_data/embeddings.pdf \
+--timeout 3600 --output_dir /mnt/project/rendered/  --use_llm \
+--llm_service marker.services.openai.OpenAIService --OpenAIService_openai_image_format jpeg \
+--openai_api_key "local" --openai_base_url "http://127.0.0.1:8081/v1" --openai_model "local-model"\
+--paginate_output
+

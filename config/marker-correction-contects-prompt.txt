@@ -1,0 +1,29 @@
+The book's table of contents is unstructured.
+Make corrections:
+1. Remove text that is irrelevant to the book's table of contents (that lacks page numbers and is inconsistent with the style and content).
+2. Organize this table of contents into a hierarchical multi-level list of the following format:
+"""
+Part 1.
+
+Part Title.
+
+   1. Item
+
+      1.1 Sub-Item
+         Title ■ Title ■ Title ■ Title
+      
+      1.2 Sub-Item
+         Title ■ Title ■ Title ■ Title
+         ...
+
+   2. Item
+
+      2.1 Sub-Item
+
+      2.2 Sub-Item
+
+   ...
+
+...
+"""
+Present the result in .md format.

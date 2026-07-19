@@ -1,0 +1,16 @@
+lang: ru-RU
+fontsize: 12pt
+mainfont: "Times New Roman"
+monofont: "DejaVu Sans Mono"
+geometry: "top=2cm, bottom=2cm, left=2.5cm, right=2cm"
+header-includes: |
+  \let\oldsection\section
+  \renewcommand{\section}{\clearpage\oldsection}
+  \usepackage{tcolorbox}
+  \tcbuselibrary{listings,breakable}
+  \usepackage{fvextra}
+  \fvset{breaklines=true,breakanywhere=true,fontsize=\small}
+  \let\verbatim\Verbatim
+  \let\endverbatim\endVerbatim
+include-before: |
+  \renewenvironment{Shaded}{\begin{tcolorbox}[colback=gray!5,colframe=gray!10,arc=0mm,boxrule=0.5pt,breakable,before upper={\fontsize{10pt}{12pt}\selectfont},listing options={breaklines=true,breakanywhere=true}]}{\end{tcolorbox}}
