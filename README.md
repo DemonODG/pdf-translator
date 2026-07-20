@@ -141,6 +141,23 @@ marker_single /mnt/project/raw_data/embeddings.pdf \
 
 ### 1. Извлечение (Extraction)
 Преобразование PDF в Markdown с использованием локального набора OCR-моделей от `datalab-to` (`marker-pdf`) и локального LLM-совместимого OpenAI эндпоинта для высокоточной коррекции ошибок распознавания структуры и текста «на лету».
+
+- **Базовый вариант**:
+
+```bash
+XDG_CACHE_HOME="/mnt/project/models" \
+MARKER_STRIP_LINE_BREAKS="0" \
+marker_single /mnt/project/raw_data/embeddings.pdf \
+  --timeout 3600 \
+  --output_dir /mnt/project/rendered/ \
+  --drop_repeated_text \
+  --output_format markdown
+```
+Использует возможности фирменных ocr-моделей от `datalab-to`, которые скачиваются автоматически `marker_single` при первом запуске в папку, заданную переменной окружения $XDG_CACHE_HOME (/mnt/project/models).
+Подходит всем, у кого нет возможности подключить дополнительную LLM для коррекции ошибок симейства ocr-моделей от `datalab-to`.
+
+- **Продвинутый вариант**:
+
 ```bash
 XDG_CACHE_HOME="/mnt/project/models" \
 MARKER_STRIP_LINE_BREAKS="0" \
@@ -156,11 +173,42 @@ marker_single /mnt/project/raw_data/embeddings.pdf \
   --openai_base_url "http://127.0.0.1:8081/v1" \
   --openai_model "local-model"
 ```
+Использует возможности фирменных ocr-моделей от `datalab-to` + LLM через локальный OpenAI совместимый API.
+Опции --use_llm, --llm_service, --OpenAIService_openai_image_format, --openai_api_key, --openai_base_url, --openai_model позволяют настроить подключение к развернутой OpenAI-совместимой LLM.
+
+Пример развертывания OpenAI-совместимой LLM:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 ./llama.cpp/llama-server -m ModelsIA/Qwen/MTP/Qwen3.6-27B-Q4_K_M.gguf \
+--fit off -np 1 -ngl 99 -c 65536 -b 2048 -ub 1024 --flash-attn on \
+--cache-type-k q8_0 --cache-type-v q8_0 --host 0.0.0.0   --port 8081 \
+--reasoning off --spec-type draft-mtp   --spec-draft-n-max 2 \
+--spec-draft-type-k q8_0   --spec-draft-type-v q8_0 \
+--mmproj /home/dimanodg/myproject/ModelsIA/Qwen/MTP/mmproj-BF16.gguf
+```
 
 ### 2. Перевод (Translation)
 Интеллектуальное разбиение текста на чанки и их параллельный перевод через локальный OpenAI-совместимый LLM-endpoint с сохранением контекста, структуры кода и формул.
 ```bash
 python scripts/translate_marker.py --dir /mnt/project/rendered/embeddings
+```
+
+Условия запуска translate_marker.py:
+
+- **OpenAI-совместимая LLM, доступная через файл конфигурации config/translation_config.yaml**
+   Параметры *server_pool*, *api_keymodel_name*, *model_name*, *target_folder*, *system_prompt* задают индивидуальные настройки подключения к развернутой локально OpenAI-совместимой LLM (localhost) + если есть дополнительные физические вычислительные мощности (serverpool).
+   *system_prompt* полностью настроен и не требует изменений (изменять конечно же можно под индивидуальные особенности перевода).
+   *target_folder* используется по умолчанию, если не задан параметр --dir в translate_marker.py.
+   *model_name* должна быть запущена одинаковая модель на всех дополнительных физических вычислительных узлах, если имеется распределенный serverpool.
+- **Предварительно сконвертированная в markdown pdf-книга/документ (см. п.1 Извлечение (Extraction)**
+
+Пример развертывания OpenAI-совместимой LLM для translate_marker.py:
+```bash
+CUDA_VISIBLE_DEVICES=1 ./llama.cpp/llama-server -m ModelsIA/Qwen/MTP/Qwen3.6-27B-Q4_K_M.gguf \
+--fit off -np 1 -ngl 99 -c 8192 -b 2048 -ub 1024 --flash-attn on \
+--cache-type-k q8_0 --cache-type-v q8_0 --host 0.0.0.0   --port 8081  \
+--reasoning off --spec-type draft-mtp   --spec-draft-n-max 2 \
+--spec-draft-type-k q8_0   --spec-draft-type-v q8_0
 ```
 
 ### 3. Сборка и Рендеринг (Assembly & Rendering)
