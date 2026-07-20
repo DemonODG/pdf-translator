@@ -3,9 +3,9 @@
 models/*
 !models/.gitkeep
 rendered/*
-rendered/.gitkeep
+!rendered/.gitkeep
 raw_data/*
-raw_data/.gitkeep
+!raw_data/.gitkeep
 __pycache__/
 scripts/old/
 scripts/backup/
