@@ -187,9 +187,10 @@ pandoc /mnt/project/rendered/embeddings/embeddings_ru.md \
 
 **Вывод команды:**
 ```text
-Использование: ./pipeline.sh <path_to_input_pdf> <output_path>
-Пример: ./pipeline.sh /mnt/project/raw_data/book.pdf /mnt/project/rendered/book/
+Использование: ./pipeline.sh <path_to_input_pdf> <output_path> [page_range]
+Пример: ./pipeline.sh /mnt/project/raw_data/book.pdf /mnt/project/rendered/book/ 0-20
 ```
+
 
 ### Пример запуска
 
@@ -197,4 +198,10 @@ pandoc /mnt/project/rendered/embeddings/embeddings_ru.md \
 
 ```bash
 ./pipeline.sh /mnt/project/raw_data/book.pdf /mnt/project/rendered/book/
+```
+
+Для запуска полного цикла обработки первых 21 страниц англоязычной книги и сохранения результата в структурированную папку перевода выполните:
+
+```bash
+./pipeline.sh /mnt/project/raw_data/book.pdf /mnt/project/rendered/book/ 0-20
 ```
