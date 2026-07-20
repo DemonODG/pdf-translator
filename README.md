@@ -172,3 +172,29 @@ pandoc /mnt/project/rendered/embeddings/embeddings_ru.md \
   --highlight-style=pygments \
   --resource-path=/mnt/project/rendered/embeddings
 ```
+
+## 🚀 Автоматизация и запуск (Pipeline)
+
+Для полной автоматизации процесса перевода книги «под ключ» используется bash-скрипт `pipeline.sh`. Он последовательно запускает извлечение разметки, конвертацию и перевод текста, избавляя от необходимости выполнять каждый шаг вручную.
+
+### Справка по использованию
+
+Чтобы посмотреть формат запуска, выполните команду с флагом `--help`:
+
+```bash
+./pipeline.sh --help
+```
+
+**Вывод команды:**
+```text
+Использование: ./pipeline.sh <path_to_input_pdf> <output_path>
+Пример: ./pipeline.sh /mnt/project/raw_data/book.pdf /mnt/project/rendered/book/
+```
+
+### Пример запуска
+
+Для запуска полного цикла обработки англоязычной книги и сохранения результата в структурированную папку перевода выполните:
+
+```bash
+./pipeline.sh /mnt/project/raw_data/book.pdf /mnt/project/rendered/book/
+```
