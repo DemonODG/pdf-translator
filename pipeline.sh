@@ -1,14 +1,13 @@
-#!/bin/bash
-
 # Проверка количества аргументов
-if [ "$#" -ne 2 ]; then
-    echo "Использование: $0 <path_to_input_pdf> <output_path>"
-    echo "Пример: $0 /mnt/project/raw_data/book.pdf /mnt/project/rendered/book/"
+if [ "$#" -ne 3 ]; then
+    echo "Использование: $0 <path_to_input_pdf> <output_path> [page_range]"
+    echo "Пример: $0 /mnt/project/raw_data/book.pdf /mnt/project/rendered/book/ 0-20"
     exit 1
 fi
 
 INPUT_PDF=$1
 USER_OUTPUT_PATH=$2
+PAGE_RANGE=$3
 
 # Проверка существования входного файла
 if [ ! -f "$INPUT_PDF" ]; then
@@ -31,13 +30,22 @@ else
     BASE_DIR="$USER_OUTPUT_PATH"
 fi
 
+# Очистка BASE_DIR от лишних слешей в конце, если они есть (например, /path/to/dir/ -> /path/to/dir)
+BASE_DIR="${BASE_DIR%/}"
+
 # Рабочая директория, где будут храниться все результаты для этой книги
-WORKING_DIR="$BASE_DIR/$BOOK_NAME"
+# Теперь корректно формируется даже если BASE_DIR уже содержит путь к папке книги
+if [[ "$BASE_DIR" == *"$BOOK_NAME"* ]]; then
+    WORKING_DIR="$BASE_DIR"
+else
+    WORKING_DIR="$BASE_DIR/$BOOK_NAME"
+fi
 
 echo "=== Начало конвейера перевода для книги: $BOOK_NAME ==="
 echo "Входной файл: $INPUT_PDF"
 echo "Рабочая директория: $WORKING_DIR"
 echo "Базовая директория для marker_single: $BASE_DIR"
+echo "Параметр страницы (page_range): ${PAGE_RANGE:-none}"
 
 # Создаем рабочую директорию
 mkdir -p "$WORKING_DIR"
@@ -57,7 +65,8 @@ marker_single "$INPUT_PDF" \
 --OpenAIService_openai_image_format jpeg \
 --openai_api_key "local" \
 --openai_base_url "http://127.0.0.1:8081/v1" \
---openai_model "local-model"
+--openai_model "local-model" \
+${PAGE_RANGE:+--page_range "$PAGE_RANGE"}
 
 if [ $? -ne 0 ]; then
     echo "Ошибка на этапе извлечения контента."
