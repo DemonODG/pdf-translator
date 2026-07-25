@@ -64,6 +64,9 @@ sympy==1.14.0
 mpmath==1.3.0
 networkx==3.4.2
 
+# GUI (CustomTkinter)
+customtkinter==5.2.2
+
 # Системные утилиты, интерфейс и логирование
 click==8.4.1
 tqdm==4.68.2
