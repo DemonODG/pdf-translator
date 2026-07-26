@@ -15,6 +15,8 @@ import os
 import subprocess
 import threading
 
+STEP_LABELS = {"ext": "Извлечение", "trn": "Перевод", "pdf": "Сборка PDF"}
+
 PROJECT = "/mnt/project"
 
 
@@ -60,14 +62,14 @@ class PipelineRunner:
         env["XDG_CACHE_HOME"] = os.path.join(PROJECT, "models")
         env["MARKER_STRIP_LINE_BREAKS"] = "0"
 
-        self._run(cmd, step="Извлечение", env=env)
+        self._run(cmd, step="ext", env=env)
 
     # ----------------------------------------------------------------
     def run_translation(self, target_dir):
         """Шаг 2 — translate_marker.py."""
         cmd = ["python3", os.path.join(PROJECT, "scripts", "translate_marker.py"),
                "--dir", target_dir]
-        self._run(cmd, step="Перевод")
+        self._run(cmd, step="trn")
 
     # ----------------------------------------------------------------
     def run_compile(self, md_path, output_pdf):
@@ -120,7 +122,8 @@ class PipelineRunner:
     # ----------------------------------------------------------------
     def _run(self, cmd, step, cwd=None, env=None):
         self._stop.clear()
-        self.app.log.write(f"\n=== {step}: {' '.join(cmd[:3])}... ===")
+        label = STEP_LABELS.get(step, step)
+        self.app.log.write(f"\n=== {label}: {' '.join(cmd[:3])}... ===")
         self.app.set_running(True)
 
         self.process = subprocess.Popen(
@@ -153,7 +156,7 @@ class PipelineRunner:
 
             # tqdm
             m = self._parse_tqdm(raw)
-            if m and step == "Перевод":
+            if m and step == "trn":
                 cur, total, pct = m
                 self.app.pipeline.set_progress(step, pct, chunks=(cur, total))
                 continue

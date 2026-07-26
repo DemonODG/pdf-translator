@@ -1,123 +1,149 @@
 """
-Правая область: блок «Файлы» + блок «Прогресс».
+Вкладки пайплайна: Извлечение → Перевод → Сборка PDF.
 """
-
 import os
 import customtkinter as ctk
-import tkinter as tk
 
 
-class PipelinePanel(ctk.CTkFrame):
+class PipelineTabs(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=0)  # Файлы
-        self.grid_rowconfigure(1, weight=1)  # Прогресс
+        self.grid_rowconfigure(0, weight=1)
 
-        self._build_files()
-        self._build_progress()
+        self.tabview = ctk.CTkTabview(self)
+        self.tabview.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.tab_ext = self.tabview.add("1. Извлечение")
+        self.tab_trn = self.tabview.add("2. Перевод")
+        self.tab_pdf = self.tabview.add("3. Сборка PDF")
 
-    # ---- Файлы --------------------------------------------------------
-    def _build_files(self):
-        frm = ctk.CTkFrame(self)
-        frm.grid(row=0, column=0, sticky="nsew", padx=10, pady=(10, 5))
-        frm.grid_columnconfigure(1, weight=1)
-        frm.grid_columnconfigure(2, weight=0)
-        for r in range(2):
-            frm.grid_rowconfigure(r, weight=0)
+        self._paths = {}
 
-        labels = ["Входной PDF:", "Выходная папка:"]
-        self._file_entries = {}
-        self._file_paths = {}
+        self._build_extraction()
+        self._build_translation()
+        self._build_compile()
 
-        for r, label in enumerate(labels):
-            ctk.CTkLabel(frm, text=label, width=115, anchor="w").grid(row=r, column=0, sticky="w", padx=(10, 0), pady=3)
-            txt = ctk.CTkTextbox(frm, height=22, width=300)
-            txt.grid(row=r, column=1, sticky="ew", padx=(5, 5), pady=3)
-            txt.configure(state="disabled")
-            self._file_entries[label] = txt
-            self._file_paths[label] = ""
+    # ---- helpers ----
+    def _textentry(self, parent, row, sticky="ew"):
+        txt = ctk.CTkTextbox(parent, height=24)
+        txt.grid(row=row, column=0, columnspan=2, sticky=sticky, padx=(15, 10), pady=4)
+        txt.configure(state="disabled")
+        return txt
 
-        # Кнопки
-        btn_frame = ctk.CTkFrame(frm)
-        btn_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
-        self.btn_pdf = ctk.CTkButton(btn_frame, text="Выбрать PDF", width=110, height=28, font=ctk.CTkFont(size=13),
-                                      command=self.browse_pdf)
-        self.btn_pdf.grid(row=0, column=0, padx=5, pady=2)
-        self.btn_dir = ctk.CTkButton(btn_frame, text="Выбрать папку", width=110, height=28, font=ctk.CTkFont(size=13),
+    def _set_path(self, key, path):
+        self._paths[key] = path or ""
+        w = getattr(self, f"_txt_{key}", None)
+        if w:
+            w.configure(state="normal")
+            w.delete("1.0", "end")
+            w.insert("1.0", path or "")
+            w.configure(state="disabled")
+
+    # ---- 1. Извлечение ----
+    def _build_extraction(self):
+        t = self.tab_ext
+        t.grid_columnconfigure(1, weight=1)
+
+        r = 0
+        ctk.CTkLabel(t, text="Входной PDF", width=100, anchor="w").grid(
+            row=r, column=0, sticky="w", padx=(15, 0), pady=3)
+        self._txt_input_pdf = self._textentry(t, r + 1)
+        r = 3
+        ctk.CTkLabel(t, text="Выходная папка", width=100, anchor="w").grid(
+            row=r, column=0, sticky="w", padx=(15, 0), pady=3)
+        self._txt_output_dir = self._textentry(t, r + 1)
+        r = 5
+
+        btn_frm = ctk.CTkFrame(t)
+        btn_frm.grid(row=r, column=0, columnspan=2, sticky="w", padx=(15, 10), pady=5)
+        self.btn_pdf = ctk.CTkButton(btn_frm, text="Выбрать PDF", width=120, height=28,
+                                      font=ctk.CTkFont(size=13), command=self.browse_pdf)
+        self.btn_pdf.grid(row=0, column=0, padx=5)
+        self.btn_dir = ctk.CTkButton(btn_frm, text="Выбрать папку", width=120, height=28,
+                                      font=ctk.CTkFont(size=13),
                                       command=self.browse_dir, state="disabled")
-        self.btn_dir.grid(row=0, column=1, padx=5, pady=2)
+        self.btn_dir.grid(row=0, column=1, padx=5)
+        ctk.CTkButton(btn_frm, text="▶ Запустить", width=120, height=28,
+                       font=ctk.CTkFont(size=13), fg_color="#42a5f5",
+                       command=lambda: self.app.run_step("ext")).grid(row=0, column=2, padx=5)
 
-    def _set_file(self, label, path):
-        w = self._file_entries[label]
-        w.configure(state="normal")
-        w.delete("1.0", "end")
-        w.insert("1.0", path or "")
-        w.configure(state="disabled")
-        self._file_paths[label] = path
+    # ---- 2. Перевод ----
+    def _build_translation(self):
+        t = self.tab_trn
+        t.grid_columnconfigure(1, weight=1)
 
+        ctk.CTkLabel(t, text="Выбранный файл .md", width=100, anchor="w").grid(
+            row=0, column=0, sticky="w", padx=(15, 0), pady=3)
+        self._txt_md_file = self._textentry(t, 1)
+
+        btn_frm = ctk.CTkFrame(t)
+        btn_frm.grid(row=2, column=0, columnspan=2, sticky="w", padx=(15, 10), pady=5)
+        ctk.CTkButton(btn_frm, text="Выбрать .md", width=120, height=28,
+                       font=ctk.CTkFont(size=13), command=self.browse_md).grid(row=0, column=0, padx=5)
+        ctk.CTkButton(btn_frm, text="▶ Запустить", width=120, height=28,
+                       font=ctk.CTkFont(size=13), fg_color="#ab47bc",
+                       command=lambda: self.app.run_step("trn")).grid(row=0, column=1, padx=5)
+
+    # ---- 3. Сборка PDF ----
+    def _build_compile(self):
+        t = self.tab_pdf
+        t.grid_columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(t, text="Переведённый _ru.md", width=100, anchor="w").grid(
+            row=0, column=0, sticky="w", padx=(15, 0), pady=3)
+        self._txt_ru_md_file = self._textentry(t, 1)
+
+        btn_frm = ctk.CTkFrame(t)
+        btn_frm.grid(row=2, column=0, columnspan=2, sticky="w", padx=(15, 10), pady=5)
+        ctk.CTkButton(btn_frm, text="Выбрать _ru.md", width=120, height=28,
+                       font=ctk.CTkFont(size=13), command=self.browse_ru_md).grid(row=0, column=0, padx=5)
+        ctk.CTkButton(btn_frm, text="▶ Собрать PDF", width=120, height=28,
+                       font=ctk.CTkFont(size=13), fg_color="#ff9800",
+                       command=lambda: self.app.run_step("pdf")).grid(row=0, column=1, padx=5)
+
+    # ---- public API ----
     @property
     def input_pdf(self):
-        return self._file_paths.get("Входной PDF:", "")
+        return self._paths.get("input_pdf", "")
 
     @property
     def output_dir(self):
-        return self._file_paths.get("Выходная папка:", "")
+        return self._paths.get("output_dir", "")
+
+    @property
+    def md_file(self):
+        return self._paths.get("md_file", "")
+
+    @property
+    def ru_md_file(self):
+        return self._paths.get("ru_md_file", "")
 
     def set_input_pdf(self, path):
-        self._set_file("Входной PDF:", path)
+        self._set_path("input_pdf", path)
         book = os.path.splitext(os.path.basename(path))[0]
         self.set_output_dir(f"/mnt/project/rendered/{book}")
         self.btn_dir.configure(state="normal")
 
     def set_output_dir(self, path):
-        self._set_file("Выходная папка:", path)
+        self._set_path("output_dir", path)
 
-    # ---- Прогресс -----------------------------------------------------
-    def _build_progress(self):
-        frm = ctk.CTkFrame(self)
-        frm.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
-        frm.grid_columnconfigure(0, weight=1)
-        for r in range(5):
-            frm.grid_rowconfigure(r, weight=0)
+    def set_md_file(self, path):
+        self._set_path("md_file", path)
+        ru_path = path.replace(".md", "_ru.md")
+        self._set_path("ru_md_file", ru_path)
+        self._set_path("output_dir", os.path.dirname(path))
 
-        steps = [("Извлечение", 0), ("Перевод", 1), ("Сборка PDF", 2)]
-        self._bars = {}
-        self._step_labels = {}
+    def set_ru_md_file(self, path):
+        self._set_path("ru_md_file", path)
+        self._set_path("output_dir", os.path.dirname(path))
 
-        for label, idx in steps:
-            ctk.CTkLabel(frm, text=label, width=75, anchor="w").grid(row=idx, column=0, sticky="w", padx=(10, 0), pady=2)
-            bar = ctk.CTkProgressBar(frm, orientation="horizontal", height=14)
-            bar.grid(row=idx, column=1, sticky="ew", padx=(5, 10), pady=2)
-            bar.set(0)
-            self._bars[label] = bar
-
-        # Счётчик чанков (под Перевод)
-        self.lbl_chunks = ctk.CTkLabel(frm, text="Чанков: -- / --", width=150, anchor="e", font=ctk.CTkFont(size=13))
-        self.lbl_chunks.grid(row=3, column=1, sticky="e", padx=(5, 10), pady=2)
-
-        # Активных серверов
-        self.lbl_servers = ctk.CTkLabel(frm, text="Серверов: --", width=100, anchor="e", font=ctk.CTkFont(size=13))
-        self.lbl_servers.grid(row=4, column=1, sticky="e", padx=(5, 10), pady=2)
-
-    # ---- Public API ---------------------------------------------------
-    def set_progress(self, step_name, pct, chunks=None, servers=None):
-        bar = self._bars.get(step_name)
-        if bar:
-            bar.set(pct / 100)
-        if chunks:
-            cur, total = chunks
-            self.lbl_chunks.configure(text=f"Чанков: {cur} / {total} ({pct}%)")
-        if servers is not None:
-            self.lbl_servers.configure(text=f"Серверов: {servers}")
+    def set_progress(self, step, pct, chunks=None, servers=None):
+        pass  # прогрессбары убраны
 
     def reset(self):
-        for bar in self._bars.values():
-            bar.set(0)
-        self.lbl_chunks.configure(text="Чанков: -- / --")
-        self.lbl_servers.configure(text="Серверов: --")
+        pass  # прогрессбары убраны
 
-    # ---- File dialogs -------------------------------------------------
+    # ---- file dialogs ----
     def browse_pdf(self):
         from tkinter import filedialog
         p = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
@@ -129,3 +155,15 @@ class PipelinePanel(ctk.CTkFrame):
         p = filedialog.askdirectory()
         if p:
             self.set_output_dir(p)
+
+    def browse_md(self):
+        from tkinter import filedialog
+        p = filedialog.askopenfilename(filetypes=[("Markdown files", "*.md")])
+        if p:
+            self.set_md_file(p)
+
+    def browse_ru_md(self):
+        from tkinter import filedialog
+        p = filedialog.askopenfilename(filetypes=[("Markdown files", "*.md")])
+        if p:
+            self.set_ru_md_file(p)
