@@ -15,7 +15,8 @@ class AppWindow(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("PDF Translator")
-        self.geometry("900x650")
+        self.geometry("950x750")
+        self.minsize(950, 750)
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("dark-blue")
 
