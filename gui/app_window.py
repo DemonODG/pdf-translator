@@ -36,6 +36,8 @@ class AppWindow(ctk.CTk):
         self._build_run_controls()
         self._build_log()
 
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+
     # ----------------------------------------------------------------
     def _build_header(self):
         frm = ctk.CTkFrame(self, height=36)
@@ -133,6 +135,7 @@ class AppWindow(ctk.CTk):
             text="⏳ Работает..." if state else "Готово",
             text_color="#ffdd00" if state else "#00ff88")
         self.btn_go.configure(state="disabled" if state else ("normal" if self.cb_run_all.get() else "disabled"))
+        ctk.CTk.config(self, cursor="watch" if state else "")
 
     # ----------------------------------------------------------------
     def go(self):
@@ -170,6 +173,10 @@ class AppWindow(ctk.CTk):
 
     def stop_pipeline(self):
         self.runner.stop()
+
+    def _on_close(self):
+        ctk.CTk.config(self, cursor="")
+        self.destroy()
 
     # ----------------------------------------------------------------
     def _run_extraction(self):

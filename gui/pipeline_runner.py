@@ -126,56 +126,72 @@ class PipelineRunner:
         self.app.log.write(f"\n=== {label}: {' '.join(cmd[:3])}... ===")
         self.app.set_running(True)
 
-        self.process = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, bufsize=1, cwd=cwd, env=env,
-        )
+        try:
+            self.process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, bufsize=1, cwd=cwd, env=env,
+            )
+        except Exception as exc:
+            self.app.log.write(f"ОШИБКА запуска {label}: {exc}", "ERROR")
+            self.app.set_running(False)
+            return
 
         threading.Thread(target=self._reader, args=(step,), daemon=True).start()
 
     # ----------------------------------------------------------------
     def _reader(self, step):
-        assert self.process is not None  # always set in _run before _reader
-        out = self.process.stdout
-        err = self.process.stderr
+        assert self.process is not None
+        try:
+            out = self.process.stdout
+            err = self.process.stderr
+            if out is None or err is None:
+                self.app.log.write("ОШИБКА: stdout/stderr потока None", "ERROR")
+                self.process = None
+                self.app.set_running(False)
+                return
 
-        # Читаем stderr в фоне (отдельный поток)
-        def read_err():
-            for line in err:
+            # Читаем stderr в фоне (отдельный поток)
+            def read_err():
+                try:
+                    for line in err:
+                        if self._stop.is_set():
+                            break
+                        level = "ERROR" if "error" in line.lower() else "WARNING"
+                        self.app.log.write(line.rstrip(), level)
+                except Exception as exc:
+                    self.app.log.write(f"ОШИБКА чтения stderr: {exc}", "ERROR")
+
+            threading.Thread(target=read_err, daemon=True).start()
+
+            for line in out:
                 if self._stop.is_set():
                     break
-                level = "ERROR" if "error" in line.lower() else "WARNING"
-                self.app.log.write(line.rstrip(), level)
+                raw = line.rstrip()
 
-        threading.Thread(target=read_err, daemon=True).start()
+                # tqdm
+                m = self._parse_tqdm(raw)
+                if m and step == "trn":
+                    cur, total, pct = m
+                    self.app.pipeline.set_progress(step, pct, chunks=(cur, total))
+                    continue
 
-        for line in out:
+                # Логируем остальные строки
+                level = self._detect_level(raw)
+                self.app.log.write(raw, level)
+
+            # Конец процесса
+            self.process.wait()
             if self._stop.is_set():
-                break
-            raw = line.rstrip()
-
-            # tqdm
-            m = self._parse_tqdm(raw)
-            if m and step == "trn":
-                cur, total, pct = m
-                self.app.pipeline.set_progress(step, pct, chunks=(cur, total))
-                continue
-
-            # Логируем остальные строки
-            level = self._detect_level(raw)
-            self.app.log.write(raw, level)
-
-        # Конец процесса
-        self.process.wait()
-        if self._stop.is_set():
-            self.app.log.write(f"{step} прерван", "WARNING")
-        else:
-            rc = self.process.returncode
-            self.app.log.write(f"{step} завершен (exit={rc})")
-            self.app.pipeline.set_progress(step, 100 if rc == 0 else 0)
-
-        self.process = None
-        self.app.set_running(False)
+                self.app.log.write(f"{step} прерван", "WARNING")
+            else:
+                rc = self.process.returncode
+                self.app.log.write(f"{step} завершен (exit={rc})")
+                self.app.pipeline.set_progress(step, 100 if rc == 0 else 0)
+        except Exception as exc:
+            self.app.log.write(f"ОШИБКА {STEP_LABELS.get(step, step)}: {exc}", "ERROR")
+        finally:
+            self.process = None
+            self.app.set_running(False)
 
     # ----------------------------------------------------------------
     @staticmethod
