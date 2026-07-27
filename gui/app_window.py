@@ -28,9 +28,9 @@ class AppWindow(ctk.CTk):
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=0)   # header
-        self.grid_rowconfigure(1, weight=2)   # pipeline tabs
+        self.grid_rowconfigure(1, weight=0)   # pipeline tabs (fixed height)
         self.grid_rowconfigure(2, weight=0)   # run controls
-        self.grid_rowconfigure(3, weight=1)   # log
+        self.grid_rowconfigure(3, weight=1)   # log (scales)
 
         self._build_header()
         self._build_pipeline()
@@ -61,7 +61,7 @@ class AppWindow(ctk.CTk):
     def _build_pipeline(self):
         self.pipeline = PipelineTabs(self)
         self.pipeline.app = self
-        self.pipeline.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        self.pipeline.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
 
     # ----------------------------------------------------------------
     def _build_run_controls(self):
