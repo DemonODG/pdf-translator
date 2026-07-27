@@ -61,7 +61,11 @@ class ConfigLoader:
         s = app.settings
 
         def get(entry):
-            return entry.get().strip() if entry else ""
+            if entry is None:
+                return ""
+            if isinstance(entry, ctk.CTkTextbox):
+                return entry.get("1.0", "end").strip()
+            return entry.get().strip()
 
         self.translation["server_pool"] = [
             x.strip() for x in get(s.entry_server_pool).split("\n") if x.strip()
