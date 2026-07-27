@@ -2,6 +2,8 @@
 Загрузка и сохранение конфигурации YAML.
 
 Синхронизирует config/*.yaml с полями SettingsPanel.
+Загрузка — через PyYAML (читает любые теги).
+Сохранение — через ruamel.yaml (round-trip: сохраняет формат, | блоки, комментарии).
 """
 import os
 import customtkinter as ctk
@@ -16,6 +18,7 @@ class ConfigLoader:
     def __init__(self):
         self.translation = {}
         self.pandoc = {}
+        self.load("all")  # Загружаем конфиг при инициализации
 
     # ---------------------------------------------------------------
     def load(self, which="all"):
@@ -25,10 +28,11 @@ class ConfigLoader:
             self.pandoc = self._read(P_CFG)
 
     def save(self, which="all"):
+        """Round-trip сохранение через ruamel.yaml — не ломает | блоки."""
         if which in ("all", "translation"):
-            self._write(T_CFG, self.translation)
+            self._roundtrip_save(T_CFG, self.translation)
         if which in ("all", "pandoc"):
-            self._write(P_CFG, self.pandoc)
+            self._roundtrip_save(P_CFG, self.pandoc)
 
     # ---------------------------------------------------------------
     def load_into(self, app):
@@ -88,7 +92,30 @@ class ConfigLoader:
             return yaml.safe_load(f) or {}
 
     @staticmethod
-    def _write(path, data):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+    def _roundtrip_save(path, new_values):
+        """
+        Round-trip сохранение через ruamel.yaml.
+        Читает файл, обновляет нужные ключи, пишет обратно —
+        сохраняет формат, | блоки, комментарии, порядок ключей.
+        """
+        if not os.path.isfile(path):
+            return
+
+        from ruamel.yaml import YAML
+        ru = YAML()
+        ru.preserve_quotes = True
+
+        # Читаем файл как ruamel-документ (RoundTrip mapping)
+        with open(path, "r", encoding="utf-8") as f:
+            doc = ru.load(f)
+
+        if not doc:
+            return
+
+        # Обновляем ключи
+        for key, val in new_values.items():
+            doc[key] = val
+
+        # Пишем обратно — ruamel сохраняет формат
         with open(path, "w", encoding="utf-8") as f:
-            yaml.dump(data, f, allow_unicode=True, default_flow_style=False)
+            ru.dump(doc, f)

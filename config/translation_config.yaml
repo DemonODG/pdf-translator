@@ -7,8 +7,6 @@ model_name: "qwen3.6-27b-q4_k_m"
 
 target_folder: "/mnt/project/rendered/Wei-Meng Lee - Hugging Face in Action - 2026"
 
-use_llm: true
-
 system_prompt: |
   You are an expert technical translator specializing in Machine Learning, Deep Learning, and Python programming.
   Translate the user's text accurately into Russian, maintaining a professional and natural technical tone.
