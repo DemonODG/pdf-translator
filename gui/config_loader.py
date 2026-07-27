@@ -48,7 +48,6 @@ class ConfigLoader:
 
         put(s.entry_input_pdf,   "")
         put(s.entry_output_dir,  t.get("target_folder", ""))
-        put(s.entry_page_range,  "")
         put(s.entry_server_pool, "\n".join(t.get("server_pool", [])))
         put(s.entry_api_key,     t.get("api_key", ""))
         put(s.entry_model_name,  t.get("model_name", ""))

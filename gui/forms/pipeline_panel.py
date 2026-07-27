@@ -53,6 +53,13 @@ class PipelineTabs(ctk.CTkFrame):
             row=r, column=0, sticky="w", padx=(15, 0), pady=3)
         self._txt_output_dir = self._textentry(t, r + 1)
         r = 5
+        ctk.CTkLabel(t, text="Page Range", width=100, anchor="w").grid(
+            row=r, column=0, sticky="w", padx=(15, 0), pady=3)
+        self._entry_page_range = ctk.CTkEntry(t, height=28, font=ctk.CTkFont(size=13),
+                                               placeholder_text="1-10, 20, 30-40")
+        self._entry_page_range.grid(row=r + 1, column=0, columnspan=2, sticky="ew",
+                                    padx=(15, 10), pady=4)
+        r = 7
 
         btn_frm = ctk.CTkFrame(t)
         btn_frm.grid(row=r, column=0, columnspan=2, sticky="w", padx=(15, 10), pady=5)
@@ -117,6 +124,28 @@ class PipelineTabs(ctk.CTkFrame):
     @property
     def ru_md_file(self):
         return self._paths.get("ru_md_file", "")
+
+    @property
+    def page_range(self):
+        return self._entry_page_range.get().strip()
+
+    def validate_page_range(self):
+        """Возвращает (True, None) или (False, error_msg)."""
+        import re
+        pr = self.page_range
+        if not pr:
+            return True, None
+        # "1-10,20,30-40" → элементы через запятую, каждый — число или диапазон
+        parts = [p.strip() for p in pr.split(",") if p.strip()]
+        for part in parts:
+            if "-" in part:
+                a, b = part.split("-", 1)
+                if not (a.isdigit() and b.isdigit() and int(a) <= int(b)):
+                    return False, f"Неверный диапазон: {part}"
+            else:
+                if not part.isdigit():
+                    return False, f"Неверное число: {part}"
+        return True, None
 
     def set_input_pdf(self, path):
         self._set_path("input_pdf", path)

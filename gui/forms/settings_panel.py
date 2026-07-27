@@ -24,7 +24,6 @@ class SettingsPanel(ctk.CTkFrame):
 
         self.entry_input_pdf   = None
         self.entry_output_dir  = None
-        self.entry_page_range  = None
         self.entry_server_pool = None
         self.entry_api_key     = None
         self.entry_model_name  = None
@@ -50,9 +49,8 @@ class SettingsPanel(ctk.CTkFrame):
         t = self.tab_ext; t.grid_columnconfigure(1, weight=1)
         self.entry_input_pdf   = self._le(t, "Input PDF:",    0)
         self.entry_output_dir  = self._le(t, "Output Dir:",   1)
-        self.entry_page_range  = self._le(t, "Page Range:",   2)
         frm = ctk.CTkFrame(t)
-        frm.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
+        frm.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         ctk.CTkLabel(frm, text="Use LLM:", width=80, anchor="e").grid(row=0, column=0, sticky="e")
         ctk.CTkCheckBox(frm, text="", variable=self.cb_use_llm).grid(row=0, column=1, sticky="w")
 

@@ -166,9 +166,12 @@ class AppWindow(ctk.CTk):
             self.log.write("Укажите входной PDF", "WARNING"); return
         if not odir:
             self.log.write("Укажите выходную папку", "WARNING"); return
+        ok, err = self.pipeline.validate_page_range()
+        if not ok:
+            self.log.write(f"Page Range: {err}", "ERROR"); return
         self.pipeline.reset()
         s = self.settings
-        pr = s.entry_page_range.get() if s else ""
+        pr = self.pipeline.page_range
         llm = s.cb_use_llm.get() if s else True
         self.runner.run_all(pdf, odir, page_range=pr, use_llm=llm)
 
@@ -187,9 +190,12 @@ class AppWindow(ctk.CTk):
             self.log.write("Укажите входной PDF", "WARNING"); return
         if not odir:
             self.log.write("Укажите выходную папку", "WARNING"); return
+        ok, err = self.pipeline.validate_page_range()
+        if not ok:
+            self.log.write(f"Page Range: {err}", "ERROR"); return
         self.pipeline.reset()
         s = self.settings
-        pr = s.entry_page_range.get() if s else ""
+        pr = self.pipeline.page_range
         llm = s.cb_use_llm.get() if s else True
         self.runner.run_extraction(pdf, odir, page_range=pr, use_llm=llm)
 
