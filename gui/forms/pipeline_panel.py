@@ -12,7 +12,7 @@ class PipelineTabs(ctk.CTkFrame):
         self.grid_rowconfigure(0, weight=1)
 
         self.tabview = ctk.CTkTabview(self)
-        self.tabview.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.tabview.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
         self.tab_ext = self.tabview.add("1. Извлечение")
         self.tab_trn = self.tabview.add("2. Перевод")
         self.tab_pdf = self.tabview.add("3. Сборка PDF")

@@ -37,7 +37,8 @@ class LogPanel(ctk.CTkFrame):
     # ------------------------------------------------------------------
     def _build(self):
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)  # button bar (fixed)
+        self.grid_rowconfigure(1, weight=1)  # text area (scales)
 
         # Кнопка прокрутки
         btn_bar = ctk.CTkFrame(self, height=26)
