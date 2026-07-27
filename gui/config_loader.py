@@ -52,6 +52,7 @@ class ConfigLoader:
         put(s.entry_server_pool, "\n".join(t.get("server_pool", [])))
         put(s.entry_api_key,     t.get("api_key", ""))
         put(s.entry_model_name,  t.get("model_name", ""))
+        s.cb_use_llm.set(t.get("use_llm", True))
         put(s.entry_fontsize,    p.get("fontsize", "12pt"))
         put(s.entry_mainfont,    p.get("mainfont", "Times New Roman"))
         put(s.entry_monofont,    p.get("monofont", "DejaVu Sans Mono"))
@@ -72,6 +73,7 @@ class ConfigLoader:
         ]
         self.translation["api_key"]       = get(s.entry_api_key)
         self.translation["model_name"]    = get(s.entry_model_name)
+        self.translation["use_llm"]       = s.cb_use_llm.get()
         self.translation["target_folder"] = get(s.entry_output_dir)
 
         self.pandoc["fontsize"] = get(s.entry_fontsize) or "12pt"
