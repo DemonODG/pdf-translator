@@ -53,8 +53,9 @@ def fix_russian_footnotes(final_text):
     # 2. Находим строки определений сносок в подвалах (которые модель перевела как <sup>1</sup> или [^1])
     # и превращаем их в идеальный стандарт Pandoc, ПРИНУДИТЕЛЬНО изолируя пустыми строками \n\n
     def clean_universal_footnote_def(m):
-        num = m.group(1)      # Номер сноски
-        raw_tail = m.group(2)  # Весь текст сноски целиком
+        # Номер живёт в одной из трёх групп: <sup>N</sup> / [^N] / [N]:
+        num = m.group(1) or m.group(2) or m.group(3)
+        raw_tail = m.group(4)  # Весь текст сноски целиком
 
         # Сохраняем весь переведенный текст, убирая только висячие пробелы
         clean_text = raw_tail.strip()
@@ -62,8 +63,9 @@ def fix_russian_footnotes(final_text):
         # Возвращаем идеальную разметку Pandoc, жестко изолированную пустыми строками \n\n
         return f"\n\n[^{num}]: {clean_text}\n\n"
 
-    # Регулярка гибко отсекает префиксы span, sup или квадратные скобки в начале строки подвала
-    footnote_def_pattern = r'(?:\n|^)(?:<span[^>]+></span>)?\s*(?:<sup>|\[\^)?(\d+)(?:</sup>|\])?(?::)?\s*(.*)'
+    # Регулярка требует ОБЯЗАТЕЛЬНОГО тега <sup> или скобок [^N] / [N]: перед номером,
+    # чтобы не ломать обычные строки, начинающиеся с цифры (списки, 10.1, 2026, 10:30)
+    footnote_def_pattern = r'(?:\n|^)(?:<span[^>]+></span>)?\s*(?:<sup>(\d+)</sup>|\[\^(\d+)\]:?|\[(\d+)\]:)\s*(.*)'
     final_text = re.sub(footnote_def_pattern,
                         clean_universal_footnote_def, final_text)
 
