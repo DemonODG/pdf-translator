@@ -32,7 +32,7 @@ class PipelineRunner:
         return self.process is not None and self.process.poll() is None
 
     # ----------------------------------------------------------------
-    def run_extraction(self, input_pdf, output_dir, page_range="", use_llm=True):
+    def run_extraction(self, input_pdf, output_dir, page_range="", use_llm=True, on_done=None):
         """Шаг 1 — marker_single."""
         base_dir = os.path.dirname(output_dir) if os.path.basename(output_dir) else output_dir
 
@@ -62,17 +62,17 @@ class PipelineRunner:
         env["XDG_CACHE_HOME"] = os.path.join(PROJECT, "models")
         env["MARKER_STRIP_LINE_BREAKS"] = "0"
 
-        self._run(cmd, step="ext", env=env)
+        self._run(cmd, step="ext", env=env, on_done=on_done)
 
     # ----------------------------------------------------------------
-    def run_translation(self, target_dir):
+    def run_translation(self, target_dir, on_done=None):
         """Шаг 2 — translate_marker.py."""
         cmd = ["python3", os.path.join(PROJECT, "scripts", "translate_marker.py"),
                "--dir", target_dir]
-        self._run(cmd, step="trn")
+        self._run(cmd, step="trn", on_done=on_done)
 
     # ----------------------------------------------------------------
-    def run_compile(self, md_path, output_pdf):
+    def run_compile(self, md_path, output_pdf, on_done=None):
         """Шаг 3 — pandoc."""
         work_dir = os.path.dirname(md_path)
         cmd = [
@@ -82,31 +82,45 @@ class PipelineRunner:
             "--highlight-style=pygments",
             f"--resource-path={work_dir}",
         ]
-        self._run(cmd, step="Сборка PDF", cwd=work_dir)
+        self._run(cmd, step="pdf", cwd=work_dir, on_done=on_done)
 
     # ----------------------------------------------------------------
     def run_all(self, input_pdf, output_dir, page_range="", use_llm=True):
-        """Полный пайплайн: 1 → 2 → 3."""
+        """Полный пайплайн: 1 → 2 → 3 (callback-цепочка, не блокирует Tk)."""
         self.app.log.write(f"Полный пайплайн: {os.path.basename(input_pdf)}")
-
-        self.run_extraction(input_pdf, output_dir, page_range, use_llm)
-        if self._stop.is_set():
-            self.app.log.write("Прервано пользователем на шаге Извлечение", "WARNING")
-            return
 
         book = os.path.splitext(os.path.basename(input_pdf))[0]
         base = os.path.dirname(output_dir) if os.path.basename(output_dir) == book else output_dir
         target = os.path.join(base, book)
-
-        self.run_translation(target)
-        if self._stop.is_set():
-            self.app.log.write("Прервано пользователем на шаге Перевод", "WARNING")
-            return
-
         md = os.path.join(target, f"{book}_ru.md")
         pdf = os.path.join(target, f"{book}_ru.pdf")
-        self.run_compile(md, pdf)
-        self.app.log.write(f"Готово: {pdf}")
+
+        # Обратная цепочка: compile → trn → ext (последний созданный — первый вызванный)
+        def step_compile_done():
+            self.app.log.write(f"Готово: {pdf}")
+
+        def step_compile():
+            if self._stop.is_set():
+                self.app.log.write("Прервано на Сборка PDF", "WARNING")
+                step_compile_done()
+                return
+            self.run_compile(md, pdf, on_done=step_compile_done)
+
+        def step_trn():
+            if self._stop.is_set():
+                self.app.log.write("Прервано на Перевод", "WARNING")
+                step_compile_done()
+                return
+            self.run_translation(target, on_done=step_compile)
+
+        def step_ext():
+            if self._stop.is_set():
+                self.app.log.write("Прервано на Извлечение", "WARNING")
+                step_compile_done()
+                return
+            self.run_extraction(input_pdf, output_dir, page_range, use_llm, on_done=step_trn)
+
+        step_ext()
 
     # ----------------------------------------------------------------
     def stop(self):
@@ -120,8 +134,9 @@ class PipelineRunner:
             self.app.log.write("Процесс остановлен", "WARNING")
 
     # ----------------------------------------------------------------
-    def _run(self, cmd, step, cwd=None, env=None):
+    def _run(self, cmd, step, cwd=None, env=None, on_done=None):
         self._stop.clear()
+        self._on_done = on_done
         label = STEP_LABELS.get(step, step)
         self.app.log.write(f"\n=== {label}: {' '.join(cmd[:3])}... ===")
         self.app.set_running(True)
@@ -136,18 +151,50 @@ class PipelineRunner:
             self.app.set_running(False)
             return
 
+        # Reader читает stdout/stderr в фоне
         threading.Thread(target=self._reader, args=(step,), daemon=True).start()
+
+        # Опрос завершения через Tk after() — не блокирует event loop
+        self._poll_process()
+
+    # ----------------------------------------------------------------
+    def _poll_process(self):
+        """Опос/process.poll() через Tk after() — GUI обновляется."""
+        if self.process is None or self.process.poll() is not None:
+            self._finish_step()
+            return
+        self.app.after(100, self._poll_process)
+
+    # ----------------------------------------------------------------
+    def _finish_step(self):
+        """Вызывается когда process.poll() != None (процесс завершился)."""
+        if self.process is None:
+            return
+        rc = self.process.returncode
+        if self._stop.is_set():
+            self.app.log.write("Шаг прерван", "WARNING")
+        else:
+            self.app.log.write(f"Шаг завершен (exit={rc})")
+        self.process = None
+        self.app.set_running(False)
+
+        # Продолжаем цепочку run_all если есть callback
+        cb = self._on_done
+        self._on_done = None
+        if cb:
+            self.app.after(0, cb)
 
     # ----------------------------------------------------------------
     def _reader(self, step):
-        assert self.process is not None
+        """Читает stdout/stderr запущенного процесса и пишет в GUI-лог."""
+        proc = self.process
+        if proc is None:
+            return
         try:
-            out = self.process.stdout
-            err = self.process.stderr
+            out = proc.stdout
+            err = proc.stderr
             if out is None or err is None:
                 self.app.log.write("ОШИБКА: stdout/stderr потока None", "ERROR")
-                self.process = None
-                self.app.set_running(False)
                 return
 
             # Читаем stderr в фоне (отдельный поток)
@@ -168,7 +215,7 @@ class PipelineRunner:
                     break
                 raw = line.rstrip()
 
-                # tqdm
+                # tqdm — обновляем прогресс, не дублируя строку в логе
                 m = self._parse_tqdm(raw)
                 if m and step == "trn":
                     cur, total, pct = m
@@ -178,20 +225,8 @@ class PipelineRunner:
                 # Логируем остальные строки
                 level = self._detect_level(raw)
                 self.app.log.write(raw, level)
-
-            # Конец процесса
-            self.process.wait()
-            if self._stop.is_set():
-                self.app.log.write(f"{step} прерван", "WARNING")
-            else:
-                rc = self.process.returncode
-                self.app.log.write(f"{step} завершен (exit={rc})")
-                self.app.pipeline.set_progress(step, 100 if rc == 0 else 0)
         except Exception as exc:
             self.app.log.write(f"ОШИБКА {STEP_LABELS.get(step, step)}: {exc}", "ERROR")
-        finally:
-            self.process = None
-            self.app.set_running(False)
 
     # ----------------------------------------------------------------
     @staticmethod

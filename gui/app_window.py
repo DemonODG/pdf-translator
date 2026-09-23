@@ -170,9 +170,8 @@ class AppWindow(ctk.CTk):
         if not ok:
             self.log.write(f"Page Range: {err}", "ERROR"); return
         self.pipeline.reset()
-        s = self.settings
         pr = self.pipeline.page_range
-        llm = s.cb_use_llm.get() if s else True
+        llm = self.config.translation.get("use_llm", True)
         self.runner.run_all(pdf, odir, page_range=pr, use_llm=llm)
 
     def stop_pipeline(self):
@@ -194,9 +193,8 @@ class AppWindow(ctk.CTk):
         if not ok:
             self.log.write(f"Page Range: {err}", "ERROR"); return
         self.pipeline.reset()
-        s = self.settings
         pr = self.pipeline.page_range
-        llm = s.cb_use_llm.get() if s else True
+        llm = self.config.translation.get("use_llm", True)
         self.runner.run_extraction(pdf, odir, page_range=pr, use_llm=llm)
 
     def _run_translation(self):
