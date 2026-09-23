@@ -113,41 +113,61 @@ def apply_placeholders(content):
 
 def fix_broken_indentation(code_text):
     """
-    Автоматически восстанавливает базовые отступы для def и docstrings.
-    Оригинальный проверенный алгоритм.
+    Восстанавливает отступы в Python-коде, потерявшем их при извлечении из PDF.
+
+    Алгоритм: стековый, по ключевым словам.
+    - Заголовок блока (def/class/if/for/while/with/try/except/finally + двоеточие)
+      увеличивает уровень вложенности для тела.
+    - elif/else/except/finally возвращают уровень на заголовок-родителя (siblings).
+    - def/class внутри класса получают отступ тела класса, иначе — столбец 0.
+    - Тройные кавычки (docstrings) отслеживаются, их контент не интерпретируется.
+
+    Ограничение (принципиальное): без исходных отступов невозможно однозначно
+    определить, где блок ЗАКАНЧИВАЕТСЯ — топовый код после функции получает
+    её уровень вложенности. Для self-contained примеров из книг этого не видно.
     """
     lines = code_text.splitlines()
-    inside_function = False
+    out = []
+    level = 0                # уровень отступа следующей строки (шаги по 4 пробела)
     inside_docstring = False
-    processed_lines = []
+    class_body_level = None  # уровень тела открытого класса (или None)
+
+    BLOCK_KW = ("def ", "class ", "if ", "elif ", "else:", "for ", "while ",
+                "with ", "try:", "except ", "except:", "finally:")
 
     for line in lines:
         stripped = line.strip()
         if not stripped:
-            processed_lines.append(line)
+            out.append("")
             continue
-        if stripped.startswith("def ") or stripped.startswith("class "):
-            inside_function = True
-            inside_docstring = False
-            processed_lines.append(stripped)
-            continue
-        if inside_function and (
-            stripped.startswith('"""') or stripped.startswith("'''")
-        ):
+
+        # --- docstring: контент не трогаем, только эмитим на текущем уровне ---
+        if stripped.startswith('"""') or stripped.startswith("'''"):
             if stripped.count('"""') % 2 != 0 or stripped.count("'''") % 2 != 0:
                 inside_docstring = not inside_docstring
-            processed_lines.append("    " + stripped)
+            out.append("    " * max(1, level) + stripped)
             continue
         if inside_docstring:
-            processed_lines.append("    " + stripped)
+            if stripped.endswith(('"""', "'''")):
+                inside_docstring = False
+            out.append("    " * max(1, level) + stripped)
             continue
-        if inside_function and not line.startswith("    "):
-            processed_lines.append("    " + stripped)
-            if stripped.startswith("return "):
-                inside_function = False
-            continue
-        processed_lines.append(line)
-    return "\n".join(processed_lines)
+
+        # --- выбор уровня для текущей строки ---
+        if stripped.startswith(("def ", "class ")):
+            level = class_body_level if class_body_level is not None else 0
+            if stripped.startswith("class "):
+                class_body_level = level + 1
+        elif stripped.startswith(("elif ", "else:", "except ", "finally:")):
+            level = max(1, level - 1)
+
+        out.append("    " * level + stripped)
+
+        # --- только заголовки блоков углубляют уровень ---
+        if stripped.endswith(":") and stripped.startswith(BLOCK_KW):
+            level += 1
+
+    return "\n".join(out)
 
 
 def restore_placeholders(translated_content, placeholders):
