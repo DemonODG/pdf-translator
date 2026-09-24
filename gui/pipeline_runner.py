@@ -34,7 +34,8 @@ class PipelineRunner:
     # ----------------------------------------------------------------
     def run_extraction(self, input_pdf, output_dir, page_range="", use_llm=True, on_done=None):
         """Шаг 1 — marker_single."""
-        base_dir = os.path.dirname(output_dir) if os.path.basename(output_dir) else output_dir
+        book = os.path.splitext(os.path.basename(input_pdf))[0]
+        base_dir = os.path.dirname(output_dir) if os.path.basename(output_dir) == book else output_dir
 
         cmd = [
             "marker_single", input_pdf,
