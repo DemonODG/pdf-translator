@@ -66,10 +66,11 @@ class PipelineRunner:
         self._run(cmd, step="ext", env=env, on_done=on_done)
 
     # ----------------------------------------------------------------
-    def run_translation(self, target_dir, on_done=None):
-        """Шаг 2 — translate_marker.py."""
+    def run_translation(self, target, on_done=None):
+        """Шаг 2 — translate_marker.py (файл --file или папка --dir)."""
+        flag = "--file" if os.path.isfile(target) else "--dir"
         cmd = ["python3", os.path.join(PROJECT, "scripts", "translate_marker.py"),
-               "--dir", target_dir]
+               flag, target]
         self._run(cmd, step="trn", on_done=on_done)
 
     # ----------------------------------------------------------------

@@ -68,6 +68,15 @@ def parse_arguments(default_target_folder):
         help="Путь к целевой папке с книгой (переопределяет значение из конфигурационного файла)",
     )
 
+    # Добавляем опцию -f / --file — перевести конкретный файл вместо всей папки
+    parser.add_argument(
+        "-f",
+        "--file",
+        type=str,
+        default=None,
+        help="Перевести конкретный .md файл (вместо всех .md в папке)",
+    )
+
     return parser.parse_args()
 
 
@@ -173,7 +182,15 @@ def translate_markdown_file(folder_path, config, config_pandoc_path):
         print(f"[Ошибка]: Папка '{folder_path}' не найдена.")
         return
 
-    md_files = [f for f in path.glob("*.md") if not f.stem.endswith("_ru")]
+    if path.is_file():
+        # Конкретный файл (--file)
+        if path.stem.endswith("_ru"):
+            print(f"[Ошибка]: '{path.name}' уже переведён (суффикс _ru).")
+            return
+        md_files = [path]
+    else:
+        # Папка (--dir) — все .md кроме переведённых
+        md_files = [f for f in path.glob("*.md") if not f.stem.endswith("_ru")]
 
     if not md_files:
         print(f"[Ошибка]: В папке '{folder_path}' нет файлов .md.")
@@ -218,9 +235,10 @@ if __name__ == "__main__":
         # Шаг 1: Загружаем базовый конфиг из YAML
         base_config = load_translation_config(CONFIG_PATH_TRANSLATION)
 
-        # Шаг 2: Парсим аргументы командной строки (-d)
+        # Шаг 2: Парсим аргументы командной строки (-d / -f)
         args = parse_arguments(base_config.get("target_folder"))
-        target_folder = args.dir
+        # Если указан --file — конкретный файл, иначе — папка
+        target = args.file if args.file else args.dir
 
         # Шаг 3: Инициализируем глобальные переменные для параллельных потоков воркера
         API_KEY = base_config["api_key"]
@@ -238,7 +256,7 @@ if __name__ == "__main__":
         )
 
         # Шаг 6: Запускаем основной процесс перевода
-        translate_markdown_file(target_folder, base_config, CONFIG_FILE_PANDOC)
+        translate_markdown_file(target, base_config, CONFIG_FILE_PANDOC)
 
     except Exception as e:
         print(f"[CRITICAL ERROR] Скрипт аварийно завершился: {e}")

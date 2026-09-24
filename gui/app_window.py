@@ -202,7 +202,7 @@ class AppWindow(ctk.CTk):
         if not md:
             self.log.write("Выберите файл .md", "WARNING"); return
         self.pipeline.reset()
-        self.runner.run_translation(os.path.dirname(md))
+        self.runner.run_translation(md)
 
     def _run_compile(self):
         ru = self.pipeline.ru_md_file
