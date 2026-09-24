@@ -31,4 +31,4 @@ system_prompt: |
   10. TARGET LANGUAGE RESTRICTION:
       - Under all circumstances, the ONLY output language must be grammatically correct, natural Russian (русский язык).
       - Absolute ban on emitting any Chinese characters (中文/汉字) or code-switching to other languages in the final output text, even if processing dense technical terms.
-use_llm: false
+use_llm: true
