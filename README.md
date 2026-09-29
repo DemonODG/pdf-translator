@@ -110,6 +110,17 @@ marker_single /mnt/project/raw_data/embeddings.pdf \
 │       ├── [book_name].md      # Исходный MD-файл, извлеченный из PDF через marker
 │       ├── [book_name]_ru.md   # Финальный склеенный перевод всей книги (Markdown)
 │       └── [book_name]_ru.pdf  # Итоговый скомпилированный PDF-файл на русском языке
+├── gui/                        # Графический интерфейс (CustomTkinter), см. gui/README.md
+│   ├── __main__.py             # Точка входа: python -m gui
+│   ├── main.py                 # Создание окна и запуск event-loop
+│   ├── app_window.py           # Главное окно: вкладки, кнопки Пуск/Стоп, лог
+│   ├── config_loader.py        # Загрузка/сохранение config/*.yaml (ruamel round-trip)
+│   ├── pipeline_runner.py      # Запуск шагов: marker_single / translate / pandoc
+│   ├── forms/                  # Панели интерфейса
+│   │   ├── pipeline_panel.py   # Вкладки: 1. Извлечение, 2. Перевод, 3. Сборка PDF
+│   │   ├── settings_panel.py   # Диалог «Настройки»: серверы, use_llm, шрифты
+│   │   └── log_panel.py        # Окно логирования
+│   └── README.md               # Описание использования GUI
 ├── scripts/                    # Скрипты автоматизации конвейера
 │   ├── translate_marker.py    # Основной оркестратор пайплайна (перевод и сборка)
 │   ├── utils/                  # Модульные утилиты
@@ -253,3 +264,9 @@ pandoc /mnt/project/rendered/embeddings/embeddings_ru.md \
 ```bash
 ./pipeline.sh /mnt/project/raw_data/book.pdf /mnt/project/rendered/book/ 0-20
 ```
+
+## 🖥 Графический интерфейс (GUI)
+
+Вместо командной строки пайплайн можно вести через графическое окно
+(вкладки «Извлечение → Перевод → Сборка PDF», полный прогон одной кнопкой).
+Описание использования — в [gui/README.md](gui/README.md).
